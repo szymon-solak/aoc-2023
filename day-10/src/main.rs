@@ -11,48 +11,31 @@ fn get_starting_point(pipes: &Vec<Vec<char>>) -> Option<(usize, usize)> {
 }
 
 fn get_starting_point_pipe(pipes: &Vec<Vec<char>>, starting_point: (usize, usize)) -> char {
-    let up = pipes
-        .get(starting_point.0 - 1)
-        .map(|p| p.get(starting_point.1).unwrap_or(&'.'))
-        .unwrap_or(&'.');
     let down = pipes
         .get(starting_point.0 + 1)
         .map(|p| p.get(starting_point.1).unwrap_or(&'.'))
-        .unwrap_or(&'.');
+        .unwrap_or(&'.')
+        .to_string();
     let left = pipes
         .get(starting_point.0)
         .map(|p| p.get(starting_point.1 - 1).unwrap_or(&'.'))
-        .unwrap_or(&'.');
+        .unwrap_or(&'.')
+        .to_string();
     let right = pipes
         .get(starting_point.0)
         .map(|p| p.get(starting_point.1 + 1).unwrap_or(&'.'))
-        .unwrap_or(&'.');
+        .unwrap_or(&'.')
+        .to_string();
 
-    let up = up == &'7' || up == &'F' || up == &'|';
-    let down = down == &'L' || down == &'J' || down == &'|';
-    let left = left == &'L' || left == &'F' || left == &'-';
-    let right = right == &'7' || right == &'J' || right == &'-';
-
-    if up && down {
-        return '|';
+    match ("LF-".contains(&left), "7J-".contains(&right), "LJ|".contains(&down)) {
+        (false, false, true) => '|',
+        (true, true, false) => '-',
+        (false, true, false) => 'L',
+        (true, false, false) => 'J',
+        (true, false, true) => '7',
+        (false, true, true) => 'F',
+        _ => '.',
     }
-    if left && right {
-        return '-';
-    }
-    if up && right {
-        return 'L';
-    }
-    if up && left {
-        return 'J';
-    }
-    if left && down {
-        return '7';
-    }
-    if down && right {
-        return 'F';
-    }
-
-    '.'
 }
 
 fn get_adjacent_coords(pipe: char) -> Vec<(i32, i32)> {
@@ -91,6 +74,31 @@ fn get_main_pipe(pipes: &Vec<Vec<char>>, starting_point: (usize, usize)) -> Vec<
     seen
 }
 
+fn count_spaces_inside(
+    pipes: &Vec<Vec<char>>,
+    main_loop: &Vec<(i32, i32)>,
+) -> u32 {
+    let mut inside_count = 0;
+    
+    pipes.iter().enumerate().for_each(|(row_idx, row)| {
+        let mut inside_pipe = false;
+
+        row.iter().enumerate().for_each(|(col_idx, elem)| {
+            let is_main_pipe = main_loop.iter().find(|(y, x)| y == &(row_idx as i32) && x == &(col_idx as i32)).is_some();
+
+            if is_main_pipe && "LJ|".contains(&elem.to_string()) {
+                inside_pipe = !inside_pipe;
+            } 
+
+            if !is_main_pipe && inside_pipe {
+                inside_count += 1;
+            }
+        });
+    });
+
+    inside_count
+}
+
 fn main() {
     let mut pipes: Vec<_> = include_str!("./input.txt")
         .lines()
@@ -100,9 +108,14 @@ fn main() {
     let starting_point = get_starting_point(&pipes).expect("starting point not found");
     let starting_point_pipe = get_starting_point_pipe(&pipes, starting_point);
     pipes[starting_point.0][starting_point.1] = starting_point_pipe;
+    let main_pipe = get_main_pipe(&pipes, starting_point);
 
     println!(
         "part 1: {:#?}",
-        get_main_pipe(&pipes, starting_point).len() / 2
+        main_pipe.len() / 2
     );
+    println!(
+        "part 2: {:#?}",
+        count_spaces_inside(&pipes, &main_pipe)
+    )
 }
